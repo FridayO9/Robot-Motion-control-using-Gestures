@@ -1,0 +1,27 @@
+import socket
+
+# Server setup
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+host = ''  # Server's IP address. '' means bind to all interfaces.
+port = 12345  # Port to listen on
+server_socket.bind((host, port))
+
+# Listen for incoming connections
+server_socket.listen(1)
+print(f"Listening on {port}...")
+
+# Accept a connection
+client_socket, client_address = server_socket.accept()
+print(f"Connection from {client_address} has been established.")
+
+try:
+    while True:
+        # Receive data from the client
+        data = client_socket.recv(1024).decode('utf-8')
+        if not data:
+            break  # If no data is received, break the loop
+        print(f"Received: {data}")
+finally:
+    # Close the connection
+    client_socket.close()
+    server_socket.close()
