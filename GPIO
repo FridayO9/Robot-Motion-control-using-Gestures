@@ -1,0 +1,121 @@
+import RPi.GPIO as GPIO
+import socket
+from time import sleep
+
+GPIO.setwarnings(False)
+
+# Set up GPIO
+GPIO.setmode(GPIO.BCM)
+
+# Motor control pins
+in1 = 17
+in2 = 27
+in3 = 5
+in4 = 6
+
+# Set up GPIO pins
+GPIO.setup(in1, GPIO.OUT)
+GPIO.setup(in2, GPIO.OUT)
+GPIO.setup(in3, GPIO.OUT)
+GPIO.setup(in4, GPIO.OUT)
+
+def turn(angle):
+    # Assuming 1 second rotation corresponds to a 90-degree turn
+    rotation_time = 1.0  # seconds
+    turn_duration = (abs(angle) / 90.0) * rotation_time
+
+    if angle > 0:
+        GPIO.output(in1, GPIO.HIGH)
+        GPIO.output(in2, GPIO.LOW)
+        GPIO.output(in3, GPIO.LOW)
+        GPIO.output(in4, GPIO.HIGH)
+    elif angle < 0:
+        GPIO.output(in1, GPIO.LOW)
+        GPIO.output(in2, GPIO.HIGH)
+        GPIO.output(in3, GPIO.HIGH)
+        GPIO.output(in4, GPIO.LOW)
+
+    sleep(turn_duration)
+    stop()
+
+def turn_left():
+    turn(90)
+    move_forward()
+
+def turn_right():
+    turn(-90)
+    move_forward()
+
+def move_backward():
+    GPIO.output(in1, GPIO.HIGH)
+    GPIO.output(in2, GPIO.LOW)
+    GPIO.output(in3, GPIO.HIGH)
+    GPIO.output(in4, GPIO.LOW)
+    sleep(1)  # Adjust this sleep duration as needed
+    stop()
+
+def move_forward():
+    GPIO.output(in1, GPIO.LOW)
+    GPIO.output(in2, GPIO.HIGH)
+    GPIO.output(in3, GPIO.LOW)
+    GPIO.output(in4, GPIO.HIGH)
+    sleep(1)  # Adjust this sleep duration as needed
+    stop()
+
+def stop():
+    GPIO.output(in1, GPIO.LOW)
+    GPIO.output(in2, GPIO.LOW)
+    GPIO.output(in3, GPIO.LOW)
+    GPIO.output(in4, GPIO.LOW)
+
+def start_server():
+    host = "192.168.67.181"
+    port = 12345
+
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind((host, port))
+    server_socket.listen(1)
+
+    print(f"Listening on {host}:{port}...")
+
+    while True:
+        client_socket, client_address = server_socket.accept()
+        print(f"Accepted connection from {client_address}")
+
+        try:
+            while True:
+                data = client_socket.recv(1024).decode("utf-8")
+
+                if not data:
+                    break  # No data received, break the loop
+
+                print(f"Received command: {data}")
+
+                if "forward" in data:
+                    move_forward()
+                elif "backward" in data:
+                    move_backward()
+                elif "left" in data:
+                    turn_left()
+                elif "right" in data:
+                    turn_right()
+                elif "stop" in data:
+                    stop()
+
+        except Exception as e:
+            print(f"Error: {e}")
+
+        finally:
+            client_socket.close()
+
+if _name_ == "_main_":
+    try:
+        start_server()
+
+    except KeyboardInterrupt:
+        pass
+
+    finally:
+        stop()
+        GPIO.cleanup()
